@@ -1,12 +1,14 @@
 #!/bin/bash
 # ============================================================
 #  DOT-OS WSL One-Shot Builder — Packard Bell Dot 262050NUW
-#  v3 — liquid-glass dock desktop + DOT Store + 2GB/HDD tuning
+#  v4 — liquid-glass dock desktop + DOT Store + Calamares installer
 #  Paste this WHOLE thing into the Ubuntu (WSL) terminal.
 # ============================================================
+set -e
+export DEBIAN_FRONTEND=noninteractive
+
 sudo apt update && sudo apt install -y live-build debootstrap xorriso isolinux
 
-set -e
 cd ~
 rm -rf dot-os-build
 lb config \
@@ -59,6 +61,9 @@ xdg-user-dirs
 swayidle
 # --- 2GB RAM safety net ---
 earlyoom
+# --- installer ---
+calamares
+calamares-settings-debian
 PKGS
 
 mkdir -p config/hooks/normal
@@ -156,7 +161,6 @@ BAR
 
 cat > /etc/skel/.config/waybar/style.css <<'CSS'
 * { font-family: "DejaVu Sans", "Font Awesome 6 Free"; font-size: 13px; min-height: 0; }
-/* liquid glass: translucent dark glass, rounded, glowing blue rim */
 window#waybar {
   background: rgba(30, 30, 46, 0.55);
   color: #cdd6f4;
@@ -202,8 +206,6 @@ FOOT
 # ===== DOT STORE: lightweight app store =====
 cat > /usr/local/bin/dot-store <<'STORE'
 #!/bin/bash
-# DOT Store - lightweight software center for 2GB machines.
-# Full repo browsing: open Synaptic from the last entry.
 ITEMS="
 Internet | Firefox (installed) | echo already-installed
 Internet | Chromium browser | sudo apt-get install -y chromium
@@ -250,17 +252,38 @@ chmod +x config/hooks/normal/060-liquid-glass.hook.chroot
 # --- hook: 2GB RAM + HDD smoothing ---
 cat > config/hooks/normal/070-smooth-2gb.hook.chroot <<'HOOK'
 #!/bin/sh
-# earlyoom: kill runaway processes before the system freezes
 systemctl enable earlyoom
-# zram-friendly memory behavior (swap to fast RAM, keep cache)
 printf 'vm.swappiness=100\nvm.vfs_cache_pressure=50\n' >> /etc/sysctl.d/99-dot.conf
-# cap journal logs (HDD friendly)
 mkdir -p /etc/systemd/journald.conf.d
 printf '[Journal]\nSystemMaxUse=64M\nRuntimeMaxUse=32M\n' > /etc/systemd/journald.conf.d/99-dot.conf
-# stop background apt from hammering the disk at boot
 systemctl mask apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
 HOOK
 chmod +x config/hooks/normal/070-smooth-2gb.hook.chroot
+
+# --- installer command + app launcher ---
+mkdir -p config/includes.chroot/usr/local/bin config/includes.chroot/usr/share/applications
+cat > config/includes.chroot/usr/local/bin/installDotos <<'INSTALL'
+#!/bin/bash
+set -e
+if ! command -v calamares >/dev/null 2>&1; then
+    echo "Calamares is not installed in this live system."
+    echo "Install it with: sudo apt-get update && sudo apt-get install -y calamares calamares-settings-debian"
+    exit 1
+fi
+exec sudo /usr/bin/calamares --disable-update-check
+INSTALL
+chmod +x config/includes.chroot/usr/local/bin/installDotos
+
+cat > config/includes.chroot/usr/share/applications/installDotos.desktop <<'DESKTOP'
+[Desktop Entry]
+Name=Install DOT-OS
+Comment=Launch the Calamares installer
+Exec=/usr/local/bin/installDotos
+Terminal=false
+Type=Application
+Categories=System;Settings;
+Icon=drive-harddisk
+DESKTOP
 
 # --- dot-detect tool ---
 mkdir -p config/includes.chroot/usr/local/bin
@@ -288,4 +311,4 @@ if [ -d "$DEST" ]; then
 else
     echo ">>> DONE! ISO at: $ISO"
 fi
-echo ">>> Boot the Dot, press Super+D for apps, Super+S for the DOT Store."
+echo ">>> Boot the Dot, press Super+D for apps, Super+S for the DOT Store, or run installDotos to install the system."

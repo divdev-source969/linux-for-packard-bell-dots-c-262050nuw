@@ -1,60 +1,60 @@
 @echo off
+setlocal
 REM ============================================================
-REM  DOT-OS Builder for Windows  (Packard Bell Dot 262050NUW)
-REM  Double-click to build the 32-bit Linux ISO via WSL Ubuntu.
-REM  Requires: Ubuntu app from Microsoft Store (WSL2), internet.
+REM  DOT-OS Builder for Windows (Packard Bell Dot 262050NUW)
+REM  Builds the current DOT-OS ISO, including the installDotos command.
+REM  Requires WSL2 with an Ubuntu distribution and internet access.
 REM ============================================================
 echo.
-echo  DOT-OS Builder - building 32-bit ISO for Packard Bell Dot
-echo.
+echo  DOT-OS Builder - building 32-bit ISO with the installer
+ echo.
 
-REM --- locate the builder script next to this .bat
 set "HERE=%~dp0"
-if not exist "%HERE%wsl-dot-os-builder.sh" (
-    echo  [ERROR] wsl-dot-os-builder.sh not found next to compile.bat!
-    echo  Download both files into the same folder, then retry.
+set "BUILDER_WIN=%HERE%wsl-dot-os-builder.sh"
+if not exist "%BUILDER_WIN%" (
+    echo [ERROR] wsl-dot-os-builder.sh was not found next to compile.bat.
     pause
     exit /b 1
 )
 
-REM --- make sure WSL exists
-echo  Checking WSL...
 where wsl >nul 2>nul
 if errorlevel 1 (
-    echo  [ERROR] WSL not found. Open PowerShell as Admin and run:  wsl --install
-    echo  Then reboot, install Ubuntu from the Microsoft Store, and retry.
+    echo [ERROR] WSL was not found. Open PowerShell as Administrator and run: wsl --install
     pause
     exit /b 1
 )
 
-REM --- check Ubuntu is installed
-echo  Checking Ubuntu...
-wsl -l -v | findstr /I "Ubuntu" >nul
+wsl -l -q | findstr /I "Ubuntu" >nul
 if errorlevel 1 (
-    echo  [ERROR] Ubuntu not installed in WSL.
-    echo  Install "Ubuntu" from the Microsoft Store, set a username/password, retry.
+    echo [ERROR] No Ubuntu distribution was found in WSL.
+    echo Install Ubuntu from the Microsoft Store, complete first-run setup, then retry.
     pause
     exit /b 1
 )
 
-REM --- copy the script into WSL home and run it
-echo  Starting build inside Ubuntu (30-90 minutes)...
-echo  Keep this window open. You may be asked for your Ubuntu password.
-echo.
-wsl -e bash -lc "cp \"$(wslpath '%HERE%wsl-dot-os-builder.sh')\" ~/wsl-dot-os-builder.sh && chmod +x ~/wsl-dot-os-builder.sh && ~/wsl-dot-os-builder.sh"
+REM Resolve the Windows script path to a WSL path before invoking bash.
+for /f "delims=" %%I in ('wsl wslpath -a "%BUILDER_WIN%"') do set "BUILDER_WSL=%%I"
+if not defined BUILDER_WSL (
+    echo [ERROR] Could not convert the builder path for WSL.
+    pause
+    exit /b 1
+)
 
+echo Starting the DOT-OS build in WSL. This can take 30-90 minutes.
+echo Keep this window open; Ubuntu may ask for your password.
+echo.
+wsl -e bash -lc "cp '%BUILDER_WSL%' ~/wsl-dot-os-builder.sh && sed -i 's/\r$//' ~/wsl-dot-os-builder.sh && chmod +x ~/wsl-dot-os-builder.sh && ~/wsl-dot-os-builder.sh"
 if errorlevel 1 (
     echo.
-    echo  [BUILD FAILED] Copy ALL output above and paste it to the AI chat for a fix.
+    echo [BUILD FAILED] Review the output above for the error.
     pause
     exit /b 1
 )
 
 echo.
-echo  ================================================
-echo   DONE! The ISO should be on your Windows Desktop:
-echo     DOT-OS-i386.iso
-echo   Flash it to USB with Rufus, boot the Dot,
-echo   then run:  sudo dot-detect
-echo  ================================================
+echo ============================================================
+echo  Build finished. Look for DOT-OS-i386.iso on your Desktop.
+echo  In the live system, run installDotos to launch the installer.
+echo ============================================================
 pause
+endlocal
