@@ -1,0 +1,29 @@
+name: Build DOT-OS ISO
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install live-build tools
+        run: sudo apt-get update && sudo apt-get install -y live-build debootstrap xorriso isolinux
+
+      - name: Run the DOT-OS builder
+        run: |
+          chmod +x wsl-dot-os-builder.sh
+          ./wsl-dot-os-builder.sh || true
+          test -f ~/dot-os-build/live-image-i386.hybrid.iso
+          cp ~/dot-os-build/live-image-i386.hybrid.iso ./DOT-OS-i386.iso
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DOT-OS-i386
+          path: DOT-OS-i386.iso
+          retention-days: 7
