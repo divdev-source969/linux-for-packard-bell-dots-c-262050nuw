@@ -1,0 +1,4 @@
+dot-os-build/
+*.iso
+*.img
+*.log

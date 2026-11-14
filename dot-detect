@@ -1,0 +1,9 @@
+#!/bin/sh
+echo "=== PACKARD BELL DOT HARDWARE REPORT ==="
+echo "--- CPU ---"; grep "model name" /proc/cpuinfo | head -1
+echo "--- Video ---"; lspci -nn | grep -i vga
+echo "--- Wi-Fi ---"; lspci -nn | grep -i network; lsusb | grep -i net
+echo "--- Loaded drivers ---"; lsmod | grep -Ei "i915|ath9k|brcmsmac|snd_hda"
+echo "--- Wi-Fi scan ---"; nmcli device wifi list 2>/dev/null | head -5
+echo "======================================="
+echo "If any line is EMPTY, paste this output into the AI chat."

@@ -1,0 +1,24 @@
+#!/bin/sh
+# --- zram swap for 2GB RAM ---
+apt-get install -y zram-tools
+cat >> /etc/default/zramswap <<'EOF'
+ALGO=lz4
+PERCENT=50
+PRIORITY=100
+EOF
+
+# --- Intel GMA 3150 tweaks for Atom N450/N570 (tearing/black screen fix) ---
+mkdir -p /etc/X11/xorg.conf.d
+cat > /etc/X11/xorg.conf.d/20-intel-dot.conf <<'EOF'
+Section "Device"
+    Identifier  "Intel GMA 3150"
+    Driver      "intel"
+    Option      "AccelMethod"  "uxa"
+    Option      "TearFree"     "true"
+EndSection
+EOF
+
+# --- reclaim RAM: disable unused services ---
+for svc in bluetooth cups-browsed; do
+    systemctl mask $svc 2>/dev/null || true
+done
