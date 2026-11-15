@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 #  DOT-OS WSL One-Shot Builder — Packard Bell Dot 262050NUW
-#  v4.3 — DOT OS branding (boot splash, boot menu, os-release) + optional AtlasLight .deb
+#  v4.4 — DOT OS branding (boot splash, boot menu, os-release) + optional AtlasLight .deb
 #  (builds Debian bookworm i386 from an Ubuntu/WSL host)
 #  Run:  chmod +x wsl-dot-os-builder.sh && ./wsl-dot-os-builder.sh
 #  Needs WSL2, and must NOT be run from /mnt/c.
@@ -60,16 +60,19 @@ done
 # (best effort: if a template folder is missing this just prints a warning)
 if [ -d /usr/share/live/build/bootloaders ]; then
     mkdir -p config/bootloaders
-    cp -r /usr/share/live/build/bootloaders/. config/bootloaders/
+    cp -r /usr/share/live/build/bootloaders/. config/bootloaders/ || true
     # text files only: menu titles and labels
-    grep -rIl "Debian" config/bootloaders 2>/dev/null | while read -r f; do
-        sed -i 's/Debian GNU\/Linux/DOT OS/g; s/Debian Live/DOT OS/g; s/Debian/DOT OS/g' "$f"
+    # NOTE: grep exits 1 when nothing matches; "|| true" keeps that from stopping the build (pipefail).
+    renamed=0
+    for f in $(grep -rIl "Debian" config/bootloaders 2>/dev/null || true); do
+        sed -i 's/Debian GNU\/Linux/DOT OS/g; s/Debian Live/DOT OS/g; s/Debian/DOT OS/g' "$f" || true
+        renamed=$((renamed + 1))
     done
     # the stock menu picture carries the Debian logo; drop it for a plain dark menu
-    grep -rIl "^menu background" config/bootloaders 2>/dev/null | while read -r f; do
-        sed -i '/^menu background/d' "$f"
+    for f in $(grep -rIl "^menu background" config/bootloaders 2>/dev/null || true); do
+        sed -i '/^menu background/d' "$f" || true
     done
-    echo ">>> Boot menu renamed to DOT OS"
+    echo ">>> Boot menu: $renamed template file(s) renamed to DOT OS"
 else
     echo "WARNING: live-build bootloader templates not found; boot menu will keep default names"
 fi
